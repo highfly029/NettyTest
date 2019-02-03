@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Log4j2的配置注意事项：
+    1.文件名称必须为log4j2.xml，并位于classpath 根目录中。否则需要单独进行路径配置（JVM属性方式或其他）
+        相比Log4j 1.x，使用异步Logger的log4j2 性能提升相当可观
+    2.JVM启动参数中设定 -Dlog4j.configurationFile=log4j2-online.xml 指定线上日志配置文件，区分开发环境和正式环境
+        避免配置随意修改提交svn后对正式环境的影响
+    3.Log4j2 Site: http://logging.apache.org/log4j/2.x/
+    4. monitorInterval(最好不使用、会增加一个线程监控) 单位秒(框架最小时间为5秒) log4j2 监控配置文件修改时间，如果配置发生变化，会reload配置
+    5 TRACE、DEBUG、INFO、WARN、ERROR、ALL、OFF
+    6 shutdownTimeout 防止kill时丢失log
+-->
+<Configuration status="info" strict="true" name="cfg" shutdownTimeout="5000">
+    <Properties>
+        <Property name="LOG_HOME">logs</Property>
+    </Properties>
+    <Appenders>
+
+        <Console name="console">
+            <PatternLayout>
+                <Pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %p [%t] %c : %m%n</Pattern>
+            </PatternLayout>
+        </Console>
+        <!--
+            RollingRandomAccessFile 采用RandomAccessFile 读写文件，性能优越
+            线上环境推荐使用此Appender
+            注意：此Appender不能及时查看日志输出，因为写入有滞后，可调整bufferSize大小
+         -->
+        <RollingRandomAccessFile name="infoLog" fileName="${LOG_HOME}/info.log" filePattern="${LOG_HOME}/info-%d{yyyyMMdd}.log"
+            bufferSize="10240" immediateFlush="false" append="true">
+            <PatternLayout>
+                <Pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %p [%t] %c : %m%n</Pattern>
+            </PatternLayout>
+            <Policies>
+            	<!-- 间隔触发间隔时间 -->
+                <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+            </Policies>
+            <!--只对固定size策略有效果-->
+            <!--<DefaultRolloverStrategy max="5"/>-->
+            <!--时间触发策略删除日志-->
+            <DefaultRolloverStrategy>
+                <Delete basePath="${LOG_HOME}" maxDepth="2">
+                    <IfFileName glob="info-*.log"/>
+                    <IfLastModified age="3d"/>
+                    <!--<IfLastModified age="30d"/>-->
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingRandomAccessFile> -->
+
+
+        <RollingRandomAccessFile name="otherLog" fileName="${LOG_HOME}/otherLog.log" filePattern="${LOG_HOME}/otherLog-%d{yyyyMMdd}.log"
+                                 bufferSize="10240" immediateFlush="false" append="true">
+            <PatternLayout>
+                <Pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %p [%t] %c : %m%n</Pattern>
+            </PatternLayout>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+            </Policies>
+            <!--<DefaultRolloverStrategy max="100"/>-->
+        </RollingRandomAccessFile> -->
+
+    </Appenders>
+
+    <Loggers>
+        <!-- 
+            Root level 级别对于生产环境推荐开启info
+            Root 是所有Logger的父Logger
+        -->
+        <Logger name="com.highfly029.LogOtherThread" level="info" additivity="false">
+            <!-- 如果再有个console kill时就会丢失log -->
+            <AppenderRef ref="console" />
+            <AppenderRef ref="otherLog" />
+        </Logger>
+        <Root level="info">
+            <AppenderRef ref="console" />
+            <AppenderRef ref="infoLog" />
+        </Root>
+            
+    </Loggers>
+
+</Configuration>
